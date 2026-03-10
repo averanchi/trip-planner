@@ -1,17 +1,58 @@
-import { useState } from 'react'
-import './App.css'
+import { useEffect } from "react"
+import LoginForm from "./components/LoginForm";
+import { Context } from "./main";
+import React from "react";
+import { observer } from "mobx-react-lite";
+import type { IUser } from "./models/response/IUser";
+import UserService from "./services/UserService";
 
-function App() {
-  const [count, setCount] = useState(0)
+const App = observer(() => {
+  const { store } = React.useContext(Context);
+  const [users, setUsers] = React.useState<IUser[]>([]);
+
+  useEffect(() => {
+    if (localStorage.getItem('token')) {
+      store.checkAuth();
+    }
+  }, [])
+
+  async function getUsers() {
+    try {
+      const response = await UserService.fetchUsers();
+      console.log(response);
+      setUsers(response.data);
+    } catch (e) { console.log(e) }
+  }
+
+  if (store.isLoading) {
+    return <div>Loading...</div>
+  }
+
+  if (!store.isAuth) {
+    return <LoginForm />
+  }
 
   return (
     <>
-      <div className="p-8">
-        <h1 className="text-3xl font-bold">Tailwind works</h1>
-        <p className="mt-4 text-blue-600">React + Vite + Tailwind v4</p>
+      <h1>{store.isAuth ? `You are logged in under ${store.user.email}` : "Please log in"}</h1>
+      <h3>{store.user.isActivated ? "Account is activated" : "Account is not activated"}  </h3>
+      <button onClick={() => store.logout()}>Logout</button>
+      <div>
+        <button onClick={() => getUsers()}>Get all users</button>
       </div>
+      {users.length > 0 && (
+        <>
+          <div>
+            {users.map(user => (
+              <div key={user.email}>{user.email}</div>
+            ))}
+          </div>
+
+        </>
+      )}
     </>
   )
-}
+});
 
-export default App
+
+export default App;
